@@ -84,3 +84,20 @@ void revert_unmount_magisk() {
         lazy_unmount(s.data());
     }
 }
+
+void revert_unmount_kpatch() {
+    std::vector<std::string> targets;
+
+    targets.emplace_back(MODULE_DIR);
+    
+    for (auto& info: parse_mount_info("self")) {
+        // Unmount everything mounted to /data/adb
+        if (info.target.starts_with("/data/adb")) {
+            targets.emplace_back(info.target);
+        }
+    }
+    // Do unmount
+    for (auto& s: reversed(targets)) {
+        lazy_unmount(s.data());
+    }
+}

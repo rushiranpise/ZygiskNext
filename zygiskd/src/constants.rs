@@ -9,6 +9,7 @@ pub const MIN_KSU_VERSION: i32 = unwrap_ctx!(parse_i32(env!("MIN_KSU_VERSION")))
 pub const MAX_KSU_VERSION: i32 = unwrap_ctx!(parse_i32(env!("MAX_KSU_VERSION")));
 pub const MIN_MAGISK_VERSION: i32 = unwrap_ctx!(parse_i32(env!("MIN_MAGISK_VERSION")));
 pub const ZKSU_VERSION: &str = env!("ZKSU_VERSION");
+pub const MIN_APATCH_VERSION: i32 = unwrap_ctx!(parse_i32(env!("MIN_APATCH_VERSION")));
 
 #[cfg(debug_assertions)]
 pub const MAX_LOG_LEVEL: LevelFilter = LevelFilter::Trace;
@@ -43,6 +44,7 @@ bitflags! {
         const PROCESS_IS_MANAGER = 1 << 28;
         const PROCESS_ROOT_IS_KSU = 1 << 29;
         const PROCESS_ROOT_IS_MAGISK = 1 << 30;
+        const PROCESS_ROOT_IS_KPATCH = 1 << 27;
         const PROCESS_IS_SYSUI = 1 << 31;
     }
 }
