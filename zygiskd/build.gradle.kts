@@ -5,7 +5,7 @@ plugins {
 
 val minKsuVersion: Int by rootProject.extra
 val maxKsuVersion: Int by rootProject.extra
-val minMagiskVersion: Int by rootProject.extra
+val kpatchVerCode: Int by rootProject.extra
 val verCode: Int by rootProject.extra
 val verName: String by rootProject.extra
 val commitHash: String by rootProject.extra
@@ -27,7 +27,7 @@ cargo {
         spec.environment("ANDROID_NDK_HOME", android.ndkDirectory.path)
         spec.environment("MIN_KSU_VERSION", minKsuVersion)
         spec.environment("MAX_KSU_VERSION", maxKsuVersion)
-        spec.environment("MIN_MAGISK_VERSION", minMagiskVersion)
+        spec.environment("KPATCH_VER_CODE", kpatchVerCode)
         spec.environment("ZKSU_VERSION", "$verName-$verCode-$commitHash-$profile")
     }
 }

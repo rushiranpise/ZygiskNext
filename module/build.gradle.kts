@@ -1,4 +1,3 @@
-import android.databinding.tool.ext.capitalizeUS
 import java.security.MessageDigest
 import org.apache.tools.ant.filters.ReplaceTokens
 
@@ -27,7 +26,7 @@ val verName: String by rootProject.extra
 val minKsuVersion: Int by rootProject.extra
 val minKsudVersion: Int by rootProject.extra
 val maxKsuVersion: Int by rootProject.extra
-val minMagiskVersion: Int by rootProject.extra
+val kpatchVerCode: Int by rootProject.extra
 val commitHash: String by rootProject.extra
 
 android.buildFeatures {
@@ -36,9 +35,9 @@ android.buildFeatures {
 }
 
 androidComponents.onVariants { variant ->
-    val variantLowered = variant.name.lowercase()
-    val variantCapped = variant.name.capitalizeUS()
-    val buildTypeLowered = variant.buildType?.lowercase()
+    val variantLowered = variant.name.toLowerCase()
+    val variantCapped = variant.name.capitalize()
+    val buildTypeLowered = variant.buildType?.toLowerCase()
 
     val moduleDir = layout.buildDirectory.dir("outputs/module/$variantLowered")
     val zipFileName = "$moduleName-$verName-$verCode-$commitHash-$buildTypeLowered.zip".replace(' ', '-')
@@ -72,24 +71,24 @@ androidComponents.onVariants { variant ->
                 "MIN_KSU_VERSION" to "$minKsuVersion",
                 "MIN_KSUD_VERSION" to "$minKsudVersion",
                 "MAX_KSU_VERSION" to "$maxKsuVersion",
-                "MIN_MAGISK_VERSION" to "$minMagiskVersion",
+                "KPTACH_VER_CODE" to "$kpatchVerCode",
             )
             filter<ReplaceTokens>("tokens" to tokens)
             filter<FixCrLfFilter>("eol" to FixCrLfFilter.CrLf.newInstance("lf"))
         }
         into("bin") {
-            from(project(":zygiskd").layout.buildDirectory.file("rustJniLibs/android"))
+            from(project(":zygiskd").buildDir.path + "/rustJniLibs/android")
             include("**/zygiskd")
         }
         into("lib") {
-            from(project(":loader").layout.buildDirectory.file("intermediates/stripped_native_libs/$variantLowered/out/lib"))
+            from("${project(":loader").buildDir}/intermediates/stripped_native_libs/$variantLowered/out/lib")
         }
 
         val root = moduleDir.get()
 
         doLast {
             if (file("private_key").exists()) {
-                println("=== Guards the peace of Machikado ===")
+                println("=== machikado intergity signing ===")
                 val privateKey = file("private_key").readBytes()
                 val publicKey = file("public_key").readBytes()
                 val namedSpec = NamedParameterSpec("ed25519")
@@ -107,16 +106,16 @@ androidComponents.onVariants { variant ->
                         .putLong(real.length())
                         .array()
                     sig.update(buffer)
+                    println("sha $path ${real.length()}")
                     real.forEachBlock { bytes, size ->
                         sig.update(bytes, 0, size)
                     }
                 }
 
                 fun getSign(name: String, abi32: String, abi64: String) {
-                    val set = TreeSet<Pair<File, File?>> { o1, o2 ->
-                        o1.first.path.replace("\\", "/")
-                            .compareTo(o2.first.path.replace("\\", "/"))
-                    }
+                    println("getSign for $name $abi32 $abi64")
+                    val set =
+                        TreeSet<Pair<File, File?>> { o1, o2 -> o1.first.path.replace("\\", "/").compareTo(o2.first.path.replace("\\", "/")) }
                     set.add(Pair(root.file("module.prop").asFile, null))
                     set.add(Pair(root.file("sepolicy.rule").asFile, null))
                     set.add(Pair(root.file("post-fs-data.sh").asFile, null))
@@ -174,7 +173,6 @@ androidComponents.onVariants { variant ->
                 getSign("machikado.arm", "armeabi-v7a", "arm64-v8a")
                 getSign("machikado.x86", "x86", "x86_64")
             } else {
-                println("no private_key found, this build will not be signed")
                 root.file("machikado.arm").asFile.createNewFile()
                 root.file("machikado.x86").asFile.createNewFile()
             }
@@ -194,7 +192,7 @@ androidComponents.onVariants { variant ->
         group = "module"
         dependsOn(prepareModuleFilesTask)
         archiveFileName.set(zipFileName)
-        destinationDirectory.set(layout.buildDirectory.file("outputs/release").get().asFile)
+        destinationDirectory.set(file("$buildDir/outputs/release"))
         from(moduleDir)
     }
 
@@ -220,10 +218,10 @@ androidComponents.onVariants { variant ->
         }
     }
 
-    val installMagiskTask = task<Exec>("installMagisk$variantCapped") {
+    val installKpatchTask = task<Exec>("installKpatch$variantCapped") {
         group = "module"
         dependsOn(pushTask)
-        commandLine("adb", "shell", "su", "-M", "-c", "magisk --install-module /data/local/tmp/$zipFileName")
+        commandLine("adb", "shell", "su", "-c", "/data/adb/apd module install /data/local/tmp/$zipFileName")
     }
 
     task<Exec>("installKsuAndReboot$variantCapped") {
@@ -232,9 +230,9 @@ androidComponents.onVariants { variant ->
         commandLine("adb", "reboot")
     }
 
-    task<Exec>("installMagiskAndReboot$variantCapped") {
+    task<Exec>("installKpatchAndReboot$variantCapped") {
         group = "module"
-        dependsOn(installMagiskTask)
+        dependsOn(installKpatchTask)
         commandLine("adb", "reboot")
     }
 }

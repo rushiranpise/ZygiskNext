@@ -12,6 +12,8 @@
 #endif
 
 constexpr auto kCPSocketName = "/" LP_SELECT("cp32", "cp64") ".sock";
+constexpr const auto MAGIC_PATH_ENV = "MAGIC_PATH";
+constexpr const auto MAGIC_ENV = "MAGIC";
 
 class UniqueFd {
     using Fd = int;
@@ -59,12 +61,9 @@ namespace zygiskd {
         RequestCompanionSocket,
         GetModuleDir,
         ZygoteRestart,
-        SystemServerStarted,
     };
 
     void Init(const char *path);
-
-    std::string GetTmpPath();
 
     bool PingHeartbeat();
 
@@ -79,6 +78,4 @@ namespace zygiskd {
     int GetModuleDir(size_t index);
 
     void ZygoteRestart();
-
-    void SystemServerStarted();
 }

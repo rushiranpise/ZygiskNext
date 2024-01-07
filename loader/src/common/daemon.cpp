@@ -7,13 +7,10 @@
 #include "socket_utils.h"
 
 namespace zygiskd {
-    static std::string TMP_PATH;
+    static std::string zygisk_path;
     void Init(const char *path) {
-        TMP_PATH = path;
-    }
-
-    std::string GetTmpPath() {
-        return TMP_PATH;
+        LOGI("zygisk path set to %s", path);
+        zygisk_path = path;
     }
 
     int Connect(uint8_t retry) {
@@ -22,7 +19,7 @@ namespace zygiskd {
                 .sun_family = AF_UNIX,
                 .sun_path={0},
         };
-        auto socket_path = TMP_PATH + kCPSocketName;
+        auto socket_path = zygisk_path + kCPSocketName;
         strcpy(addr.sun_path, socket_path.c_str());
         socklen_t socklen = sizeof(addr);
 
@@ -126,17 +123,6 @@ namespace zygiskd {
         }
         if (!socket_utils::write_u8(fd, (uint8_t) SocketAction::ZygoteRestart)) {
             PLOGE("Failed to request ZygoteRestart");
-        }
-    }
-
-    void SystemServerStarted() {
-        UniqueFd fd = Connect(1);
-        if (fd == -1) {
-            PLOGE("Failed to report system server started");
-        } else {
-            if (!socket_utils::write_u8(fd, (uint8_t) SocketAction::SystemServerStarted)) {
-                PLOGE("Failed to report system server started");
-            }
         }
     }
 }

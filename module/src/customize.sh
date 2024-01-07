@@ -5,7 +5,7 @@ DEBUG=@DEBUG@
 MIN_KSU_VERSION=@MIN_KSU_VERSION@
 MIN_KSUD_VERSION=@MIN_KSUD_VERSION@
 MAX_KSU_VERSION=@MAX_KSU_VERSION@
-MIN_MAGISK_VERSION=@MIN_MAGISK_VERSION@
+KPATCH_VER_CODE=@KPATCH_VER_CODE@
 
 if [ "$BOOTMODE" ] && [ "$KSU" ]; then
   ui_print "- Installing from KernelSU app"
@@ -28,20 +28,8 @@ if [ "$BOOTMODE" ] && [ "$KSU" ]; then
     ui_print "! Please update KernelSU Manager to latest version"
     abort    "*********************************************************"
   fi
-  if [ "$(which magisk)" ]; then
-    ui_print "*********************************************************"
-    ui_print "! Multiple root implementation is NOT supported!"
-    ui_print "! Please uninstall Magisk before installing Zygisk Next"
-    abort    "*********************************************************"
-  fi
-elif [ "$BOOTMODE" ] && [ "$MAGISK_VER_CODE" ]; then
-  ui_print "- Installing from Magisk app"
-  if [ "$MAGISK_VER_CODE" -lt "$MIN_MAGISK_VERSION" ]; then
-    ui_print "*********************************************************"
-    ui_print "! Magisk version is too old!"
-    ui_print "! Please update Magisk to latest version"
-    abort    "*********************************************************"
-  fi
+elif [ "$BOOTMODE" ] && [ "$APATCH" ]; then
+  ui_print "- Installing from Apatch app"
 else
   ui_print "*********************************************************"
   ui_print "! Install from recovery is not supported"
@@ -139,10 +127,15 @@ else
   mv "$MODPATH/machikado.arm" "$MODPATH/machikado"
 fi
 
+ui_print "- Generating magic"
+MAGIC=$(tr -dc 'a-f0-9' </dev/urandom | head -c 18)
+mkdir -p /data/adb/zygisksu || abort "failed to create zygisksu dir"
+echo -n "$MAGIC" > "/data/adb/zygisksu/magic"
+
 ui_print "- Setting permissions"
-set_perm_recursive "$MODPATH/bin" 0 0 0755 0755
 set_perm_recursive "$MODPATH/lib" 0 0 0755 0644 u:object_r:system_lib_file:s0
 set_perm_recursive "$MODPATH/lib64" 0 0 0755 0644 u:object_r:system_lib_file:s0
+set_perm_recursive "$MODPATH/bin" 0 0 0755 0755 u:object_r:magisk_file:s0
 
 # If Huawei's Maple is enabled, system_server is created with a special way which is out of Zygisk's control
 HUAWEI_MAPLE_ENABLED=$(grep_prop ro.maple.enable)

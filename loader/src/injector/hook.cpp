@@ -21,6 +21,7 @@
 #include "module.hpp"
 #include "files.hpp"
 #include "misc.hpp"
+#include "solist.hpp"
 
 #include "art_method.hpp"
 
@@ -145,8 +146,8 @@ DCL_HOOK_FUNC(int, unshare, int flags) {
         if (g_ctx->flags[DO_REVERT_UNMOUNT]) {
             if (g_ctx->info_flags & PROCESS_ROOT_IS_KSU) {
                 revert_unmount_ksu();
-            } else if (g_ctx->info_flags & PROCESS_ROOT_IS_MAGISK) {
-                revert_unmount_magisk();
+            } else if (g_ctx->info_flags & PROCESS_ROOT_IS_KPATCH) {
+                revert_unmount_kpatch();
             }
         }
 
@@ -556,6 +557,37 @@ void ZygiskContext::run_modules_pre() {
         }
     }
 
+    // Remove from SoList to avoid detection
+    bool solist_res = SoList::Initialize();
+    if (!solist_res) {
+        LOGE("Failed to initialize SoList\n");
+    } else {
+        SoList::NullifySoName("jit-cache");
+    }
+
+    // Remap as well to avoid checking of /memfd:jit-cache
+    for (auto &info : lsplt::MapInfo::Scan()) {
+        if (strstr(info.path.c_str(), "jit-cache-zygisk"))
+        {
+            LOGI("Remap jit-cache-zygisk at address %p", info.start);
+
+            void *addr = (void *)info.start;
+            size_t size = info.end - info.start;
+            void *copy = mmap(nullptr, size, PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+            if (copy == MAP_FAILED) {
+                LOGE("Failed to mmap jit-cache-zygisk\n");
+                continue;
+            }
+
+            if ((info.perms & PROT_READ) == 0) {
+                mprotect(addr, size, PROT_READ);
+            }
+            memcpy(copy, addr, size);
+            mremap(copy, size, size, MREMAP_MAYMOVE | MREMAP_FIXED, addr);
+            mprotect(addr, size, info.perms);
+        }
+    }
+
     for (auto &m : modules) {
         m.onLoad(env);
         if (flags[APP_SPECIALIZE]) {
@@ -582,12 +614,10 @@ void ZygiskContext::run_modules_post() {
 void ZygiskContext::app_specialize_pre() {
     flags[APP_SPECIALIZE] = true;
     info_flags = zygiskd::GetProcessFlags(g_ctx->args.app->uid);
-    if ((info_flags & (PROCESS_IS_MANAGER | PROCESS_ROOT_IS_MAGISK)) == (PROCESS_IS_MANAGER | PROCESS_ROOT_IS_MAGISK)) {
-        LOGI("current uid %d is manager!", g_ctx->args.app->uid);
-        setenv("ZYGISK_ENABLED", "1", 1);
-    } else {
-        run_modules_pre();
+    if ((info_flags & PROCESS_ON_DENYLIST) == PROCESS_ON_DENYLIST) {
+        flags[DO_REVERT_UNMOUNT] = true;
     }
+    run_modules_pre();
 }
 
 
@@ -634,7 +664,6 @@ void ZygiskContext::nativeForkSystemServer_pre() {
         return;
 
     run_modules_pre();
-    zygiskd::SystemServerStarted();
 
     sanitize_fds();
 }

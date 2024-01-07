@@ -14,12 +14,12 @@
 using namespace std::string_view_literals;
 
 int main(int argc, char **argv) {
-    zygiskd::Init(getenv("TMP_PATH"));
     if (argc >= 2 && argv[1] == "monitor"sv) {
         init_monitor();
         return 0;
     } else if (argc >= 3 && argv[1] == "trace"sv) {
         if (argc >= 4 && argv[3] == "--restart"sv) {
+            zygiskd::Init(getenv(MAGIC_PATH_ENV));
             zygiskd::ZygoteRestart();
         }
         auto pid = strtol(argv[2], 0, 0);

@@ -11,8 +11,8 @@ extern "C" [[gnu::visibility("default")]]
 void entry(void* handle, const char* path) {
     LOGI("Zygisk library injected, version %s", ZKSU_VERSION);
     self_handle = handle;
-    zygiskd::Init(path);
 
+    zygiskd::Init(path);
     if (!zygiskd::PingHeartbeat()) {
         LOGE("Zygisk daemon is not running");
         return;

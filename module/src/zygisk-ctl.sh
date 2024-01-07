@@ -1,6 +1,3 @@
 MODDIR=${0%/*}/..
-
-export TMP_PATH=/sbin
-[ -d /sbin ] || export TMP_PATH=/debug_ramdisk
-
+export MAGIC=$(cat /data/adb/zygisksu/magic)
 exec $MODDIR/bin/zygisk-ptrace64 ctl $*
